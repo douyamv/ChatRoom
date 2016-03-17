@@ -1,0 +1,46 @@
+app.post('/signin', function (req, res) {
+  if (users[req.body.name]) {
+    //存在，则不允许登陆
+    res.redirect('/signin');
+  } else {
+    //不存在，把用户名存入 cookie 并跳转到主页
+    res.cookie("user", req.body.name, {maxAge: 1000*60*60*24*30});
+    res.redirect('/');
+  }
+});
+// development error handler
+// will print stacktrace
+if (app.get('env') === 'development') {
+  app.use(function(err, req, res, next) {
+    res.status(err.status || 500);
+     
+  });
+}
+
+// production error handler
+// no stacktraces leaked to user
+app.use(function(err, req, res, next) {
+  res.status(err.status || 500);
+ 
+});
+
+app.use(express.cookieParser());
+
+
+var server = http.createServer(app);
+var io = require('socket.io').listen(server);
+io.sockets.on('connection', function (socket) {
+	
+	
+	//有人上线
+socket.on('online', function (data) {
+  //将上线的用户名存储为 socket 对象的属性，以区分每个 socket 对象，方便后面使用
+  socket.name = data.user;
+  //users 对象中不存在该用户名则插入该用户名
+  if (!users[data.user]) {
+    users[data.user] = data.user;
+  }
+  //向所有用户广播该用户上线信息
+  io.sockets.emit('online', {users: users, user: data.user});
+});
+});
